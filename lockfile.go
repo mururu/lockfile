@@ -84,6 +84,14 @@ func (l Lockfile) GetOwner() (*os.Process, error) {
 // Please note, that existing lockfiles containing pids of dead processes
 // and lockfiles containing no pid at all are simply deleted.
 func (l Lockfile) TryLock() error {
+	return l.tryLock(false)
+}
+
+func (l Lockfile) TryLockWithCheckPidFile() error {
+	return l.tryLock(true)
+}
+
+func (l Lockfile) tryLock(AbortWithOldPidFile bool) error {
 	name := string(l)
 
 	// This has been checked by New already. If we trigger here,
@@ -116,8 +124,12 @@ func (l Lockfile) TryLock() error {
 	// as well as many other errors can happen to a filesystem operation
 	// and we really want to abort on those.
 	if err := os.Link(tmplock.Name(), name); err != nil {
-		if !os.IsExist(err) {
+		if AbortWithOldPidFile {
 			return err
+		} else {
+			if !os.IsExist(err) {
+				return err
+			}
 		}
 	}
 
